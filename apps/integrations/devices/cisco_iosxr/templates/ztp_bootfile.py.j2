@@ -1,0 +1,55 @@
+#!/usr/bin/env python
+"""IOS-XR ZTP bootfile rendered for {{ hostname }} ({{ serial_number }}).
+
+Steps:
+  1. Capture device serial number.
+  2. Compare current software version to target ({{ target_software_version }}).
+     Upgrade if older.
+  3. Fetch device-specific config from the orchestrator using the SN.
+  4. Apply config and notify orchestrator the device is ready.
+"""
+from ztp_helper import ZtpHelper
+
+ORCH_BASE = "{{ extra.config_url.rsplit('/', 2)[0] }}"
+TARGET_VERSION = "{{ target_software_version }}"
+IMAGE_URL = "{{ software_image_url }}"
+
+
+def main() -> None:
+    z = ZtpHelper(syslog_server=None, syslog_file="/disk0:/ztp/ztp.log")
+    z.ztp_log("=== rev-ce-builder ZTP starting ===")
+
+    # 1. Capture serial.
+    rc, serial = z.xrcmd({"exec_cmd": "show inventory chassis | i SN"})
+    z.ztp_log(f"chassis serial: {serial!r}")
+
+    # 2. Software upgrade gate.
+    rc, version = z.xrcmd({"exec_cmd": "show version | i Version"})
+    if TARGET_VERSION and TARGET_VERSION not in (version or ""):
+        z.ztp_log(f"upgrading to {TARGET_VERSION} from {IMAGE_URL}")
+        z.install_xr_image(IMAGE_URL)
+
+    # 3. Fetch config keyed by serial number.
+    config_url = f"{ORCH_BASE}/configs/{ '{' }serial{ '}' }.cfg".replace(
+        "{serial}", serial.strip()
+    )
+    z.ztp_log(f"pulling config from {config_url}")
+    rc = z.download_file(config_url, "/disk0:/ztp/running.cfg")
+    if not rc:
+        z.ztp_log("config download failed")
+        raise SystemExit(1)
+
+    # 4. Apply config.
+    z.xrapply("/disk0:/ztp/running.cfg")
+
+    # 5. Notify orchestrator.
+    z.ztp_log("notifying orchestrator: ready")
+    z.xrcmd({"exec_cmd": (
+        f"run curl -fsS -X POST {ORCH_BASE}/callback/ready/{serial.strip()}"
+    )})
+
+    z.ztp_log("=== ZTP complete ===")
+
+
+if __name__ == "__main__":
+    main()
