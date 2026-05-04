@@ -1,0 +1,41 @@
+<tr id="device-{{ device.pk }}">
+  <td><code>{{ device.serial_number }}</code></td>
+  <td>
+    <a href="{% url 'inventory:device_detail' device.pk %}">
+      {{ device.hostname|default:"—" }}
+    </a>
+  </td>
+  <td>{{ device.device_model }}</td>
+  <td>{{ device.site|default:"—" }}</td>
+  <td>
+    <span class="badge bg-{% if device.status == 'ready' or device.status == 'deployed' %}success{% elif device.status == 'failed' %}danger{% elif device.status == 'reserved' or device.status == 'config_generated' %}warning text-dark{% elif device.status == 'provisioning' %}info text-dark{% else %}secondary{% endif %}">
+      {{ device.get_status_display }}
+    </span>
+  </td>
+  <td>{{ device.reserved_by.username|default:"—" }}</td>
+  <td class="small text-muted">
+    {% if device.last_ztp_event %}
+      {{ device.last_ztp_event }}
+      <br/>{{ device.last_ztp_event_at|date:"Y-m-d H:i" }}
+    {% else %}—{% endif %}
+  </td>
+  <td class="text-end">
+    {% if device.reserved_by %}
+      <button
+        class="btn btn-sm btn-outline-secondary"
+        hx-post="{% url 'inventory:device_release' device.pk %}"
+        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+        hx-target="#device-{{ device.pk }}"
+        hx-swap="outerHTML"
+      >release</button>
+    {% else %}
+      <button
+        class="btn btn-sm btn-outline-primary"
+        hx-post="{% url 'inventory:device_reserve' device.pk %}"
+        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+        hx-target="#device-{{ device.pk }}"
+        hx-swap="outerHTML"
+      >reserve</button>
+    {% endif %}
+  </td>
+</tr>

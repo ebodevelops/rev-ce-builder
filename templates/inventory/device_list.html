@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Inventory · rev-ce-builder{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3 class="mb-0">Device inventory</h3>
+  <form class="d-flex gap-2" method="get">
+    <input
+      class="form-control form-control-sm"
+      type="search"
+      name="q"
+      value="{{ query }}"
+      placeholder="serial / hostname / IP"
+    />
+    <select class="form-select form-select-sm" name="status">
+      <option value="">all statuses</option>
+      {% for value, label in statuses %}
+        <option value="{{ value }}" {% if value == selected_status %}selected{% endif %}>
+          {{ label }}
+        </option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-sm btn-primary" type="submit">filter</button>
+  </form>
+</div>
+
+<table class="table table-sm bg-white shadow-sm align-middle">
+  <thead>
+    <tr>
+      <th>Serial</th>
+      <th>Hostname</th>
+      <th>Model</th>
+      <th>Site</th>
+      <th>Status</th>
+      <th>Reserved by</th>
+      <th>Last ZTP</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for device in devices %}
+      {% include "inventory/_device_row.html" with device=device %}
+    {% empty %}
+      <tr><td colspan="8" class="text-center text-muted py-4">No devices.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% if is_paginated %}
+  <nav>
+    <ul class="pagination pagination-sm">
+      {% if page_obj.has_previous %}
+        <li class="page-item">
+          <a class="page-link" href="?page={{ page_obj.previous_page_number }}">prev</a>
+        </li>
+      {% endif %}
+      <li class="page-item active">
+        <span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+      </li>
+      {% if page_obj.has_next %}
+        <li class="page-item">
+          <a class="page-link" href="?page={{ page_obj.next_page_number }}">next</a>
+        </li>
+      {% endif %}
+    </ul>
+  </nav>
+{% endif %}
+{% endblock %}

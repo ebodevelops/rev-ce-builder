@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}{{ device.hostname|default:device.serial_number }} · rev-ce-builder{% endblock %}
+
+{% block content %}
+<a href="{% url 'inventory:device_list' %}" class="text-decoration-none small">&larr; inventory</a>
+<h3 class="mt-2">{{ device.hostname|default:device.serial_number }}</h3>
+<p class="text-muted small">
+  serial <code>{{ device.serial_number }}</code> ·
+  status <strong>{{ device.get_status_display }}</strong>
+</p>
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="card shadow-sm">
+      <div class="card-header">Hardware</div>
+      <div class="card-body small">
+        <dl class="row mb-0">
+          <dt class="col-4">Model</dt><dd class="col-8">{{ device.device_model }}</dd>
+          <dt class="col-4">Vendor</dt><dd class="col-8">{{ device.device_model.vendor }}</dd>
+          <dt class="col-4">Site</dt><dd class="col-8">{{ device.site|default:"—" }}</dd>
+          <dt class="col-4">Scenario</dt><dd class="col-8">{{ device.scenario|default:"—" }}</dd>
+          <dt class="col-4">Console</dt>
+          <dd class="col-8">{{ device.console_server }} port {{ device.console_port|default:"—" }}</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card shadow-sm">
+      <div class="card-header">Addressing</div>
+      <div class="card-body small">
+        <dl class="row mb-0">
+          <dt class="col-4">Loopback0</dt><dd class="col-8">{{ device.loopback0|default:"—" }}</dd>
+          <dt class="col-4">Mgmt</dt><dd class="col-8">{{ device.mgmt_ip|default:"—" }}</dd>
+          <dt class="col-4">Staging IP</dt><dd class="col-8">{{ device.staging_ip|default:"—" }}</dd>
+          <dt class="col-4">Staging MAC</dt><dd class="col-8"><code>{{ device.staging_mac|default:"—" }}</code></dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <div class="card shadow-sm">
+      <div class="card-header">Interfaces</div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+          <thead><tr><th>Name</th><th>Description</th><th>Role</th><th>IPv4</th><th>IPv6</th></tr></thead>
+          <tbody>
+            {% for i in device.interfaces.all %}
+              <tr>
+                <td><code>{{ i.name }}</code></td>
+                <td>{{ i.description }}</td>
+                <td>{{ i.get_role_display|default:"—" }}</td>
+                <td>{% if i.ipv4_address %}{{ i.ipv4_address }}/{{ i.ipv4_prefix_length }}{% else %}—{% endif %}</td>
+                <td>{% if i.ipv6_address %}{{ i.ipv6_address }}/{{ i.ipv6_prefix_length }}{% else %}—{% endif %}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="5" class="text-center text-muted py-3">No interfaces yet (render config to allocate).</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <div class="card shadow-sm">
+      <div class="card-header d-flex justify-content-between">
+        <span>Recent ZTP events</span>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+          <thead><tr><th>When</th><th>Kind</th><th>Source IP</th><th>Detail</th></tr></thead>
+          <tbody>
+            {% for e in device.ztp_events.all|slice:":20" %}
+              <tr>
+                <td class="text-nowrap small">{{ e.created_at|date:"Y-m-d H:i:s" }}</td>
+                <td>{{ e.get_kind_display }}</td>
+                <td><code>{{ e.source_ip|default:"—" }}</code></td>
+                <td><code class="small">{{ e.detail }}</code></td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="4" class="text-center text-muted py-3">No events yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <div class="card shadow-sm">
+      <div class="card-header">Generated configs</div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+          <thead><tr><th>When</th><th>Template</th><th>Status</th><th>By</th><th>Git</th></tr></thead>
+          <tbody>
+            {% for c in device.configs.all|slice:":10" %}
+              <tr>
+                <td class="text-nowrap small">{{ c.rendered_at|date:"Y-m-d H:i" }}</td>
+                <td><code>{{ c.template_name }}</code></td>
+                <td>{{ c.get_status_display }}</td>
+                <td>{{ c.rendered_by|default:"—" }}</td>
+                <td><code class="small">{{ c.git_commit_sha|slice:":7"|default:"—" }}</code></td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="5" class="text-center text-muted py-3">No configs rendered yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
